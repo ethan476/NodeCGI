@@ -1,0 +1,35 @@
+{
+	"extensions": {
+		".lisp": {
+			"handler": "sbcl",
+			"default-content-type": "text/html"
+		}
+	},
+
+	"specialHandlers": {
+		"__404__": {},
+		"__500__": {},
+		"__directory__": {}
+	},
+
+	"port": 8081,
+
+	"documentRoot": "./docroot",
+
+	"timeout": 15000,
+
+	"indexFiles": [
+		"index.php"
+	],
+
+	"handlerPaths": [
+		"./handlers"
+	],
+
+	"cgi": {
+		"GATEWAY_INTERFACE": "CGI/1.1",
+		"SERVER_ADMIN":	"admin@example.org",
+		"SERVER_NAME": "example.org",
+		"SERVER_SOFTWARE": "NodeGCI/1.1"
+	}
+}
