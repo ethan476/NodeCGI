@@ -4,7 +4,7 @@ var path = require('path')
 function sbclHandler() {
 
 	this.handle = function(filename, request, config, callback) {
-		console.log("sbcl --script " + filename)
+		console.log("sbcl --script ./" + filename)
 		child = cp.exec("sbcl --script ./" + filename, {
 			"env": CGIServer.constructEnvArray(filename, request, config),
 			"timeout": config["timeout"]
@@ -14,8 +14,8 @@ function sbclHandler() {
 				return "";
 			}
 
-			callback(false, 200, {
-				"Content-type:": config["extensions"][".lisp"]["default-content-type"]
+			return callback(false, 200, {
+				"Content-Type": config["extensions"][".lisp"]["default-content-type"]
 			}, stdout);
 		});
 		request.pipe(child.stdin)
