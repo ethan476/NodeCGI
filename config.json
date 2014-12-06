@@ -31,5 +31,9 @@
 		"SERVER_ADMIN":	"admin@example.org",
 		"SERVER_NAME": "example.org",
 		"SERVER_SOFTWARE": "NodeGCI/1.1"
+	},
+
+	"env": {
+		
 	}
 }

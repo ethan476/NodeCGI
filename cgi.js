@@ -115,6 +115,8 @@ CGIServer.constructEnvArray = function(filename, request, config) {
 	/* CGI 1.1 */
 
 	var env = {
+		"CONTENT_LENGTH": 	request.headers["content-length"],
+		"CONTENT_TYPE": 	request.headers["content-type"],
 		"DOCUMENT_ROOT": 	config["documentRoot"],
 		"HTTP_HOST": 		request.headers["host"],
 		"HTTP_REFERER": 	request.headers["referer"],
@@ -131,11 +133,15 @@ CGIServer.constructEnvArray = function(filename, request, config) {
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
 		"SCRIPT_NAME": 		"", /* TODO: Fix */
-		"SERVER_PORT": 		config["port"]
+		"SERVER_PORT": 		config["port"],
 	};
 
 	for (property in config["cgi"]) {
 		env[property] = config["cgi"][property];
+	}
+
+	for (property in config["env"]) {
+		env[property] = config["env"][property];
 	}
 
 	for(property in process.env) {

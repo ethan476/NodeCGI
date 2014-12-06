@@ -18,6 +18,7 @@ function sbclHandler() {
 				"Content-type:": config["extensions"][".lisp"]["default-content-type"]
 			}, stdout);
 		});
+		request.pipe(child.stdin)
 	}
 }
 
