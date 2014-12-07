@@ -2,6 +2,7 @@ var fs = require("fs");
 var http = require("http");
 var path = require("path");
 var url = require("url");
+var querystring = require('querystring');
 
 function CGIServer(configurationFile, port) {
 	var self = this;
@@ -167,7 +168,7 @@ CGIServer.constructEnvArray = function(filename, request, config) {
 		"HTTP_USER_AGENT": 	request.headers["user-agent"],
 		"HTTPS": 			"false", /* TODO: Fix */
 		"PATH": 			process.cwd(),
-		"QUERY_STRING": 	url.parse(request.url, true).query,
+		"QUERY_STRING": 	querystring.stringify(url.parse(request.url, true).query),
 		"REMOTE_ADDR": 		request.connection.remoteAddress,
 		"REMOTE_HOST": 		request.headers['x-forwarded-for'] || request.connection.remoteAddress,
 		"REMOTE_PORT": 		request.headers['x-forwarded-port'],
