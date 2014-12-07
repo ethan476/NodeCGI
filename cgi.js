@@ -48,6 +48,9 @@ CGIServer.prototype.listen = function(port) {
 
 		if (!fs.existsSync(filename)) {
 			/* File doesn't exist */
+			self.send(404, {
+				"Content-Type": "text/html"
+			}, "A 404 page...", response);
 			return;
 		}
 
@@ -73,7 +76,7 @@ CGIServer.prototype.send = function(status, args, data, response) {
 };
 
 CGIServer.prototype.serverStatic = function(filename, request, config, callback) {
-	fs.readFile(filename, 'utf-8', function (err, data) {
+	fs.readFile(filename, function (err, data) {
 		if (err) {
 			console.log(err)
 		} else {
