@@ -3,14 +3,17 @@ var http = require("http");
 var path = require("path");
 var url = require("url");
 var querystring = require('querystring');
-var async = require("async");
 
 function CGIServer(configurationFile, port) {
 	var self = this;
 
 	self.config = require(configurationFile);
+
 	self.servers = [];
+
 	self.usedPorts = [];
+
+	self.hostToDomainTable = {};
 
 	/* Load Handlers */
 	self.handlers = {};
@@ -42,7 +45,7 @@ CGIServer.prototype.start = function() {
 	var self = this;
 
 	for(i in self.config["virtualHosts"]) {
-		console.log(self.config["virtualHosts"][i]["domain"])
+		console.log("Loading vhost: " + self.config["virtualHosts"][i]["domain"])
 		if (self.usedPorts.length == 0) {
 			self.listenOn(self.config["virtualHosts"][i], self.config["virtualHosts"][i]["port"]);
 		} else {
@@ -69,12 +72,12 @@ CGIServer.prototype.listenOn = function(domain, port) {
 
 		var filename = path.join(docroot, uri);
 
+		console.log(filename);
+
 		if (!fs.existsSync(filename)) {
 			/* File doesn't exist */
 			return self.httpError(404, self, request, response);
-		}
-
-		if (fs.lstatSync(filename).isDirectory()) {
+		} else if (fs.lstatSync(filename).isDirectory()) {
 			/* Load index file or pass to __directory__ handler */
 			for(var i in self.config["indexFiles"]) {
 				indexFilename = filename + "/" + self.config["indexFiles"][i];
@@ -179,31 +182,36 @@ CGIServer.prototype.getDomain = function(request) {
 
 	var host = request["headers"]["host"].split(":");
 
-	var done = false;
+	if (request["headers"]["host"] in self.hostToDomainTable) {
+		return self.hostToDomainTable[request["headers"]["host"]];
+	} else {
 
-	for(var i = 0; i < self.config["virtualHosts"].length; i++) {
+		for(var i = 0; i < self.config["virtualHosts"].length; i++) {
 
-		if (self.config["virtualHosts"][i]["domain"] == host[0] && self.config["virtualHosts"][i]["port"] == host[1]) {
-			return i;
-		}
+			if (self.config["virtualHosts"][i]["domain"] == host[0] && self.config["virtualHosts"][i]["port"] == host[1]) {
+				self.hostToDomainTable[request["headers"]["host"]] = i;
+				return i;
+			}
 
-		if (i + 1 == self.config["virtualHosts"].length) {
-			for(var j = 0; i < self.config["virtualHosts"].length; j++) {
-				if (self.config["virtualHosts"][j]["domain"] == host[0]) {
-					return j;
-				}
+			if (i + 1 == self.config["virtualHosts"].length) {
+				for(var j = 0; i < self.config["virtualHosts"].length; j++) {
+					if (self.config["virtualHosts"][j]["domain"] == host[0]) {
+						self.hostToDomainTable[request["headers"]["host"]] = j;
+						return j;
+					}
 
-				if (j + 1 == self.config["virtualHosts"].length) {
-					for(var z = 0; i < self.config["virtualHosts"].length; z++) {
-						if (self.config["virtualHosts"][z]["port"] == host[1]) {
-							return z;
+					if (j + 1 == self.config["virtualHosts"].length) {
+						for(var z = 0; i < self.config["virtualHosts"].length; z++) {
+							if (self.config["virtualHosts"][z]["port"] == host[1]) {
+								self.hostToDomainTable[request["headers"]["host"]] = z;
+								return z;
+							}
 						}
 					}
 				}
 			}
 		}
 	}
-
 }
 
 
