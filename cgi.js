@@ -15,6 +15,10 @@ function CgiServer(configurationFile, port) {
 
 	self.hostToDomainTable = {};
 
+	self.sockets = {};
+
+	self.nextSocketId = 0;
+
 	/* Load Handlers */
 	self.handlers = {};
 	for (var ext in self.config["extensions"]) {
@@ -59,7 +63,23 @@ CgiServer.prototype.start = function() {
    		}
    		console.log(CgiServer.timestampString() + "Loaded virtual host: " + self.config["virtualHosts"][i]["domain"] + ":" + self.config["virtualHosts"][i]["port"]);
    	}
-}
+};
+
+CgiServer.prototype.stop = function() {
+	var self = this;
+
+	console.log(CgiServer.timestampString() + "Stopping server");
+
+	for(var socketId in self.sockets) {
+		console.log(CgiServer.timestampString() + "Closed connection to: " + self.sockets[socketId].remoteAddress + ":" + self.sockets[socketId].remotePort);
+		self.sockets[socketId].destroy();
+	}
+
+	for(var server in self.servers) {
+		console.log(CgiServer.timestampString() + "Closed server on " + self.servers[server].address().address + ":" + self.servers[server].address().port);
+		self.servers[server].close();
+	}
+};
 
 CgiServer.prototype.listenOn = function(domain, port) {
 	var self = this;
@@ -101,16 +121,19 @@ CgiServer.prototype.listenOn = function(domain, port) {
 		}
 	}).listen(port);
 
+	self.servers.push(server);
     self.usedPorts.push(port);
 
     server.on('connection', function (socket) {
-        if (typeof this.sockets === "undefined") {
-            this.sockets = new Array();
-        }
-        this.sockets.push(socket);
+        var socketId = self.nextSocketId++;
+        self.sockets[socketId] = socket;
+
+        socket.on('close', function () {
+    		delete self.sockets[socketId];
+  		});
     });
 
-    self.servers.push(server)
+
 };
 
 CgiServer.prototype.send = function(status, args, data, response) {
@@ -217,7 +240,6 @@ CgiServer.prototype.getDomain = function(request) {
 		}
 	}
 }
-
 
 CgiServer.prototype.httpError = function(error, self, request, response) {
 	var fileName = "__" + error + "__";
