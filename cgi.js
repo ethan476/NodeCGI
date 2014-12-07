@@ -68,29 +68,38 @@ CGIServer.prototype.listenOn = function(domain, port) {
     server = http.createServer(function(request, response) {
 		var uri = url.parse(request.url).pathname;
 
-		var docroot = self.config["virtualHosts"][self.getDomain(request)]["documentRoot"];
+		var domain = self.getDomain(request);
 
-		var filename = path.join(docroot, uri);
+		console.log(domain)
 
-		console.log(filename);
+		if (domain !== false) {
+			var docroot = self.config["virtualHosts"][domain]["documentRoot"];
 
-		if (!fs.existsSync(filename)) {
-			/* File doesn't exist */
-			return self.httpError(404, self, request, response);
-		} else if (fs.lstatSync(filename).isDirectory()) {
-			/* Load index file or pass to __directory__ handler */
-			for(var i in self.config["indexFiles"]) {
-				indexFilename = filename + "/" + self.config["indexFiles"][i];
-				if (fs.existsSync(indexFilename)) {
-					if (fs.lstatSync(indexFilename).isFile()) {
-						return self.executeHandler(indexFilename, self, request, response);
+			var filename = path.join(docroot, uri);
+
+			console.log(filename);
+
+			if (!fs.existsSync(filename)) {
+				/* File doesn't exist */
+				return self.httpError(404, self, request, response);
+			} else if (fs.lstatSync(filename).isDirectory()) {
+				/* Load index file or pass to __directory__ handler */
+				for(var i in self.config["indexFiles"]) {
+					indexFilename = filename + "/" + self.config["indexFiles"][i];
+					if (fs.existsSync(indexFilename)) {
+						if (fs.lstatSync(indexFilename).isFile()) {
+							return self.executeHandler(indexFilename, self, request, response);
+						}
 					}
 				}
-			}
 
-			return self.directory(filename, self, request, response);
+				return self.directory(filename, self, request, response);
+			} else {
+				return self.executeHandler(filename, self, request, response);
+			}
 		} else {
-			return self.executeHandler(filename, self, request, response);
+			/* Whoops, that domain doesn't exist according to the vhosts record, pretend were not home. */
+			response.socket.end();
 		}
 	}).listen(port);
 
@@ -191,9 +200,7 @@ CGIServer.prototype.getDomain = function(request) {
 			if (self.config["virtualHosts"][i]["domain"] == host[0] && self.config["virtualHosts"][i]["port"] == host[1]) {
 				self.hostToDomainTable[request["headers"]["host"]] = i;
 				return i;
-			}
-
-			if (i + 1 == self.config["virtualHosts"].length) {
+			} else if (i + 1 == self.config["virtualHosts"].length && self.config["virtualHostPartialMatching"] == true) {
 				for(var j = 0; i < self.config["virtualHosts"].length; j++) {
 					if (self.config["virtualHosts"][j]["domain"] == host[0]) {
 						self.hostToDomainTable[request["headers"]["host"]] = j;
@@ -209,6 +216,8 @@ CGIServer.prototype.getDomain = function(request) {
 						}
 					}
 				}
+			} else {
+				return false;
 			}
 		}
 	}
