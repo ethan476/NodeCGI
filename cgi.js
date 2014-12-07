@@ -72,8 +72,25 @@ CGIServer.prototype.send = function(status, args, data, response) {
 	response.end();
 };
 
-CGIServer.prototype.serverStatic = function(filename, request, response, callback) {
-
+CGIServer.prototype.serverStatic = function(filename, request, config, callback) {
+	fs.readFile(filename, 'utf-8', function (err, data) {
+		if (err) {
+			console.log(err)
+		} else {
+			var extName = path.extname(filename);
+			if (extName in config["staticExtensions"]) {
+				callback(false, 200, {
+					"Content-Type": config["staticExtensions"][extName],
+					"Content-Length": data.length
+				}, data);
+			} else {
+				callback(false, 200, {
+					"Content-Type": "application/octet-stream",
+					"Content-Length": data.length
+				}, data);
+			}
+		}
+	});
 };
 
 CGIServer.prototype.findHandler = function(handlerName, paths, callback) {
@@ -93,22 +110,33 @@ CGIServer.prototype.executeHandler = function(self, filename, request, response,
 	
 	if (!extName) {
 		/* File has no extension, assume static... */
-
-	}
-
-	if (extName in self.handlers == false) {
+		return self.serverStatic(filename, request, self.config, function(err, status, args, data) {
+			if (err) {
+				/* Hmm, what now? */
+			}
+			callback(status, args, data, response);
+		});
+	} else if (extName in self.config["staticExtensions"]) {
+		return self.serverStatic(filename, request, self.config, function(err, status, args, data) {
+			if (err) {
+				/* Hmm, what now? */
+			}
+			callback(status, args, data, response);
+		});
+	} else if (extName in self.handlers == false) {
 		/* No extension handler, send 500 error */
 		return callback("500", {}, "", response);
+	} else {
+
+		var handler = self.handlers[extName];
+
+		handler.handle(filename, request, self.config, function(err, status, args, data) {
+			if (err) {
+				/* Hmm, what now? */
+			}
+			callback(status, args, data, response);
+		});
 	}
-
-	var handler = self.handlers[extName];
-
-	handler.handle(filename, request, self.config, function(err, status, args, data) {
-		if (err) {
-			/* Hmm, what now? */
-		}
-		callback(status, args, data, response);
-	});
 };
 
 CGIServer.constructEnvArray = function(filename, request, config) {
