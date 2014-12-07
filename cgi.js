@@ -24,6 +24,7 @@ function CGIServer(configurationFile, port) {
 					console.log(err)
 				} else {
 					self.handlers[ext] = handlerObject;
+					console.log("Loaded handler for *" + ext);
 				}
 			});
 		}
@@ -33,8 +34,6 @@ function CGIServer(configurationFile, port) {
 		/* No handlers loaded */
 		console.log("Warning: no handlers loaded");
 	}
-
-	console.log(self.handlers)
 }	
 
 CGIServer.prototype.listen = function(port) {
@@ -49,30 +48,23 @@ CGIServer.prototype.listen = function(port) {
 
 		if (!fs.existsSync(filename)) {
 			/* File doesn't exist */
-			self.send(404, {
-				"Content-Type": "text/html"
-			}, "A 404 page...", response);
-			return;
+			return self.httpError(404, self, request, response);
 		}
 
 		if (fs.lstatSync(filename).isDirectory()) {
 			/* Load index file or pass to __directory__ handler */
 			for(var i in self.config["indexFiles"]) {
-				filename = filename + "/" + self.config["indexFiles"][i];
-				console.log(filename)
-				if (fs.existsSync(filename)) {
-					if (fs.lstatSync(filename).isFile()) {
-						return self.executeHandler(self, filename, request, response, self.send)
+				indexFilename = filename + "/" + self.config["indexFiles"][i];
+				if (fs.existsSync(indexFilename)) {
+					if (fs.lstatSync(indexFilename).isFile()) {
+						return self.executeHandler(indexFilename, self, request, response);
 					}
 				}
 			}
 
-			/* No index file, send a 404 (for now) */
-			self.send(404, {
-				"Content-Type": "text/html"
-			}, "A 404 page...", response);
+			return self.directory(filename, self, request, response);
 		} else {
-			self.executeHandler(self, filename, request, response, self.send)
+			return self.executeHandler(filename, self, request, response);
 		}
 	}).listen(this.port);
     
@@ -123,7 +115,7 @@ CGIServer.prototype.findHandler = function(handlerName, paths, callback) {
 	}
 }
 
-CGIServer.prototype.executeHandler = function(self, filename, request, response, callback) {
+CGIServer.prototype.executeHandler = function(filename,  self, request, response) {
 	var extName = path.extname(filename);
 	
 	if (!extName) {
@@ -132,7 +124,7 @@ CGIServer.prototype.executeHandler = function(self, filename, request, response,
 			if (err) {
 				/* Hmm, what now? */
 			}
-			callback(status, args, data, response);
+			self.send(status, args, data, response);
 		});
 	} else if (extName in self.handlers == false) {
 		/* No extension handler, serve static */
@@ -140,7 +132,7 @@ CGIServer.prototype.executeHandler = function(self, filename, request, response,
 			if (err) {
 				/* Hmm, what now? */
 			}
-			callback(status, args, data, response);
+			self.send(status, args, data, response);
 		});
 	} else {
 
@@ -150,8 +142,100 @@ CGIServer.prototype.executeHandler = function(self, filename, request, response,
 			if (err) {
 				/* Hmm, what now? */
 			}
-			callback(status, args, data, response);
+			self.send(status, args, data, response);
 		});
+	}
+};
+
+CGIServer.prototype.httpError = function(error, self, request, response) {
+	var fileName = "__" + error + "__";
+
+	if (fileName in self.config["specialFiles"]) {
+		var file = path.join(self.config["documentRoot"], self.config["specialFiles"][fileName]);
+
+		if (fs.lstatSync(file).isFile() === false) {
+			return self.httpErrorLastResort(error, self, request, response);
+		} else {
+			return self.executeHandler(file, self, request, response);
+		}
+	} else {
+		return self.httpErrorLastResort(error, self, request, response);
+	}
+};
+
+CGIServer.prototype.httpErrorLastResort = function(error, self, request, response) {
+	self.send(error, {
+		"Content-Type": "text/html"
+	}, "<h1>Error: " + error + "</h1>", response);
+};
+
+CGIServer.prototype.directory = function(filename, self, request, response) {
+	if ("__directory__" in self.config["specialFiles"]) {
+		var file = self.config["specialFiles"]["__directory__"];
+		if (file.length > 0) {
+				if (fs.lstatSync(file).isFile()) {
+					return self.executeHandler(filename, self, request, response);
+				} else {
+					self.directoryListing(filename, self, request, response);
+				}
+		} else {
+			self.directoryListing(filename, self, request, response);
+		}
+	} else {
+		self.directoryListing(filename, self, request, response);
+	}
+};
+
+CGIServer.prototype.directoryListing = function(filename, self, request, response) {
+	var relativeFileName = filename.replace(path.normalize(self.config["documentRoot"]), "");
+	
+	if (self.config["directoryListing"] === true) {
+		var html = [];
+
+		html.push("<html>");
+		html.push("<title>" + relativeFileName + " Listing</title>");
+		
+		html.push("<h2>");
+
+		var directoryParts = relativeFileName.replace(/^\/|\/$/g, '').split(path.sep);
+
+		for(var i in directoryParts) {
+			var link = directoryParts.slice(0, i);
+			html.push("<a href='" + link + "'>" + directoryParts[i] + "</a>/");
+		}
+
+		html.push("</h2>");
+
+		html.push("<hr>");
+
+		html.push("<h3>");
+
+		html.push("<ul style='list-style-type: none; padding: 0; margin: 0;'>");
+
+		var files = fs.readdirSync(filename);
+		for(var i in files) {
+			if (fs.lstatSync(filename + "/" + files[i]).isDirectory()) {
+				html.push("<li><a href='" + files[i] + "'>" + files[i] + "/</a></li>");
+			} else {
+				html.push("<li><a href='" + files[i] + "'>" + files[i] + "</a></li>");
+			}
+		}
+
+		html.push("</ul>");
+
+		html.push("</h3>");
+
+		html.push("<html>");
+
+		html = html.join("\r\n");
+
+		self.send(200, {
+			"Content-Type": "text/html",
+			"Content-Length": html.length
+		}, html, response);
+
+	} else {
+		return self.httpError(404, self, request, response);
 	}
 };
 
