@@ -20,6 +20,7 @@ function sbclHandler() {
 			}, stdout);
 		});
 		request.pipe(child.stdin)
+		child.stdin.close();
 	}
 }
 

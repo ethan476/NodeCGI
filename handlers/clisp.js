@@ -1,7 +1,7 @@
 var cp = require('child_process')
 var path = require('path')
 
-function sbclHandler() {
+function clispHandler() {
 
 	this.handle = function(filename, request, config, callback) {
 		console.log("clisp ./" + filename)
@@ -23,4 +23,4 @@ function sbclHandler() {
 	}
 }
 
-module.exports = new sbclHandler()
+module.exports = new clispHandler()

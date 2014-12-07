@@ -56,6 +56,20 @@ CGIServer.prototype.listen = function(port) {
 
 		if (fs.lstatSync(filename).isDirectory()) {
 			/* Load index file or pass to __directory__ handler */
+			for(var i in self.config["indexFiles"]) {
+				filename = filename + "/" + self.config["indexFiles"][i];
+				console.log(filename)
+				if (fs.existsSync(filename)) {
+					if (fs.lstatSync(filename).isFile()) {
+						self.executeHandler(self, filename, request, response, self.send)
+					}
+				}
+			}
+
+			/* No index file, send a 404 (for now) */
+			self.send(404, {
+				"Content-Type": "text/html"
+			}, "A 404 page...", response);
 		} else {
 			self.executeHandler(self, filename, request, response, self.send)
 		}

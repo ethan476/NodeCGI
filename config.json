@@ -1,7 +1,7 @@
 {
 	"extensions": {
 		".lisp": {
-			"handler": "sbcl",
+			"handler": "clisp",
 			"default-content-type": "text/html"
 		}
 	},
@@ -19,7 +19,7 @@
 	"timeout": 15000,
 
 	"indexFiles": [
-		"index.php"
+		"index.lisp"
 	],
 
 	"handlerPaths": [
