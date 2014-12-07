@@ -70,8 +70,6 @@ CGIServer.prototype.listenOn = function(domain, port) {
 
 		var domain = self.getDomain(request);
 
-		console.log(domain)
-
 		if (domain !== false) {
 			var docroot = self.config["virtualHosts"][domain]["documentRoot"];
 
@@ -99,7 +97,7 @@ CGIServer.prototype.listenOn = function(domain, port) {
 			}
 		} else {
 			/* Whoops, that domain doesn't exist according to the vhosts record, pretend were not home. */
-			response.socket.end();
+			response.socket.destroy();
 		}
 	}).listen(port);
 
@@ -304,7 +302,7 @@ CGIServer.prototype.directoryListing = function(filename, self, request, respons
 
 		html.push("<html>");
 
-		html = html.join("\r\n");
+		html = html.join("\n");
 
 		self.send(200, {
 			"Content-Type": "text/html",
@@ -315,6 +313,56 @@ CGIServer.prototype.directoryListing = function(filename, self, request, respons
 		return self.httpError(404, self, request, response);
 	}
 };
+
+CGIServer.parseCGIOutput = function(stdout, ext, config, callback) {
+	var args = {};
+
+	try {
+		var status = 200;
+
+		var start = 0;
+		while(true) {
+			var i = stdout.indexOf("\r\n", start);
+			var string = stdout.substring(start, i);
+
+			if (start == i || i == -1 || string.length == 0) {
+				stdout = stdout.substr(start).replace(/^[\r\n]+|\.|[\r\n]+$/g, "");
+				break;
+			}
+
+			start = i;
+
+			var split = string.split(":");
+			split[1] = split[1].trim();
+
+			console.log(start)
+			if (split.length == 2) {
+				if (split[0] == "status") {
+					var newStatus = parseInt(split[1]);
+
+					if (newStatus != NaN) {
+						status = newStatus;
+					}
+				} else {
+					args[split[0]] = split[1];
+				}
+			}
+		}
+	} catch(e) {
+		var status = 200;
+		args["Content-Type"] = config["extensions"][ext]["default-content-type"];
+		args["Content-Length"] = stdout.length;
+	} finally {
+		if ("Content-Type" in args == false) {
+			args["Content-Type"] = config["extensions"][ext]["default-content-type"];
+		}
+		if ("Content-Length" in args == false) {
+			args["Content-Length"] = stdout.length;
+		}
+
+		callback(false, status, args, stdout);
+	}
+}
 
 CGIServer.constructEnvArray = function(filename, request, config) {
 	/* CGI 1.1 */

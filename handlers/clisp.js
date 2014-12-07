@@ -14,10 +14,14 @@ function clispHandler() {
 				return "";
 			}
 
-			return callback(false, 200, {
+			return CGIServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
+
+/*
+				callback(false, 200, {
 				"Content-Type": config["extensions"][".lisp"]["default-content-type"],
 				"Content-Length": stdout.length
 			}, stdout);
+				*/
 		});
 		request.pipe(child.stdin)
 	}
