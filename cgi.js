@@ -120,7 +120,7 @@ CGIServer.prototype.executeHandler = function(self, filename, request, response,
 			callback(status, args, data, response);
 		});
 	} else if (extName in self.handlers == false) {
-		/* No extension handler, send 500 error */
+		/* No extension handler, serve static */
 		return self.serverStatic(filename, request, self.config, function(err, status, args, data) {
 			if (err) {
 				/* Hmm, what now? */
