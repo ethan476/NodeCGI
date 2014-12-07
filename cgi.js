@@ -62,7 +62,7 @@ CGIServer.prototype.listen = function(port) {
 				console.log(filename)
 				if (fs.existsSync(filename)) {
 					if (fs.lstatSync(filename).isFile()) {
-						self.executeHandler(self, filename, request, response, self.send)
+						return self.executeHandler(self, filename, request, response, self.send)
 					}
 				}
 			}
