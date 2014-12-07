@@ -41,11 +41,21 @@ function CGIServer(configurationFile, port) {
 CGIServer.prototype.start = function() {
 	var self = this;
 
-	for(host in self.config["virtualHosts"]) {
-		if (self.config["virtualHosts"][host]["port"] in self.usedPorts === false) {
-			self.listenOn(host, self.config["virtualHosts"][host]["port"])
-		}
-	}
+	for(i in self.config["virtualHosts"]) {
+		console.log(self.config["virtualHosts"][i]["domain"])
+		if (self.usedPorts.length == 0) {
+			self.listenOn(self.config["virtualHosts"][i], self.config["virtualHosts"][i]["port"]);
+		} else {
+	    	for(var j = 0; j < self.usedPorts.length; j++) {
+	       		if (self.usedPorts[j] === self.config["virtualHosts"][i]["port"]) {
+	           		break;
+	       		}
+	       		if (j + 1 == self.usedPorts.length) {
+	       			self.listenOn(self.config["virtualHosts"][i], self.config["virtualHosts"][i]["port"]);
+	       		}
+	   		}
+   		}
+   	}
 }
 
 CGIServer.prototype.listenOn = function(domain, port) {
@@ -56,8 +66,6 @@ CGIServer.prototype.listenOn = function(domain, port) {
 		var uri = url.parse(request.url).pathname;
 
 		var docroot = self.config["virtualHosts"][self.getDomain(request)]["documentRoot"];
-
-		console.log(self.getDomain(request));
 
 		var filename = path.join(docroot, uri);
 
@@ -84,8 +92,6 @@ CGIServer.prototype.listenOn = function(domain, port) {
 	}).listen(port);
 
     self.usedPorts.push(port);
-
-	console.log(domain + ":" + port);
 
     server.on('connection', function (socket) {
         if (typeof this.sockets === "undefined") {
@@ -168,33 +174,38 @@ CGIServer.prototype.executeHandler = function(filename,  self, request, response
 	}
 };
 
-CGIServer.prototype.getDomain = function(request, config) {
+CGIServer.prototype.getDomain = function(request) {
 	var self = this;
 
 	var host = request["headers"]["host"].split(":");
 
-	if (host[0] in self.config["virtualHosts"]) {
-		return host[0];
-	} else {
-		/* Search for matching port */
-		var done = false;
-		async.forEach(self.config["virtualHosts"], function(host, callback) {
-			if (!done) {
-				if (self.config["virtualHosts"][host]["port"] == host[1]) {
-					done = true;
-					return host;
+	var done = false;
+
+	for(var i = 0; i < self.config["virtualHosts"].length; i++) {
+
+		if (self.config["virtualHosts"][i]["domain"] == host[0] && self.config["virtualHosts"][i]["port"] == host[1]) {
+			return i;
+		}
+
+		if (i + 1 == self.config["virtualHosts"].length) {
+			for(var j = 0; i < self.config["virtualHosts"].length; j++) {
+				if (self.config["virtualHosts"][j]["domain"] == host[0]) {
+					return j;
+				}
+
+				if (j + 1 == self.config["virtualHosts"].length) {
+					for(var z = 0; i < self.config["virtualHosts"].length; z++) {
+						if (self.config["virtualHosts"][z]["port"] == host[1]) {
+							return z;
+						}
+					}
 				}
 			}
-			callback();
-		}, function () {
-			if (!done) {
-				for (var host in self.config["virtualHosts"]) {
-					return host;
-				}
-			}
-		});
+		}
 	}
+
 }
+
 
 CGIServer.prototype.httpError = function(error, self, request, response) {
 	var fileName = "__" + error + "__";
