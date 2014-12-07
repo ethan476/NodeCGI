@@ -219,8 +219,8 @@ CGIServer.prototype.httpErrorLastResort = function(error, self, request, respons
 };
 
 CGIServer.prototype.directory = function(filename, self, request, response) {
-	if ("__directory__" in self.config["virtualHosts"][self.getDomaine(request)]["specialFiles"]) {
-		var file = self.config["virtualHosts"][self.getDomaine(request)]["specialFiles"]["__directory__"];
+	if ("__directory__" in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
+		var file = self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]["__directory__"];
 		if (file.length > 0) {
 				if (fs.lstatSync(file).isFile()) {
 					return self.executeHandler(filename, self, request, response);
@@ -236,7 +236,7 @@ CGIServer.prototype.directory = function(filename, self, request, response) {
 };
 
 CGIServer.prototype.directoryListing = function(filename, self, request, response) {
-	var relativeFileName = filename.replace(path.normalize(self.config["virtualHosts"][self.getDomaine(request)]["documentRoot"]), "");
+	var relativeFileName = filename.replace(path.normalize(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"]), "");
 
 	if (self.config["directoryListing"] === true) {
 		var html = [];
