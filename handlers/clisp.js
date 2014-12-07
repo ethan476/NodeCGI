@@ -3,8 +3,14 @@ var path = require('path')
 
 function clispHandler() {
 
+	this.handlerName = "clisp";
+
+	this.handlerVersion = 0.1;
+
 	this.handle = function(filename, request, config, callback) {
-		console.log("clisp ./" + filename)
+		
+		console.log(CGIServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
+
 		child = cp.exec("clisp ./" + filename, {
 			"env": CGIServer.constructEnvArray(filename, request, config),
 			"timeout": config["timeout"]

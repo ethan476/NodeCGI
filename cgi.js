@@ -4,7 +4,7 @@ var path = require("path");
 var url = require("url");
 var querystring = require('querystring');
 
-function CGIServer(configurationFile, port) {
+function CgiServer(configurationFile, port) {
 	var self = this;
 
 	self.config = require(configurationFile);
@@ -29,7 +29,7 @@ function CGIServer(configurationFile, port) {
 					console.log(err)
 				} else {
 					self.handlers[ext] = handlerObject;
-					console.log("Loaded handler for *" + ext);
+					console.log(CgiServer.timestampString() + "Loaded handler for *" + ext);
 				}
 			});
 		}
@@ -37,15 +37,14 @@ function CGIServer(configurationFile, port) {
 
 	if (self.handlers.length == 0) {
 		/* No handlers loaded */
-		console.log("Warning: no handlers loaded");
+		console.log(CgiServer.timestampString() + "Warning: no handlers loaded, only static files will be served.");
 	}
 }	
 
-CGIServer.prototype.start = function() {
+CgiServer.prototype.start = function() {
 	var self = this;
 
 	for(i in self.config["virtualHosts"]) {
-		console.log("Loading vhost: " + self.config["virtualHosts"][i]["domain"])
 		if (self.usedPorts.length == 0) {
 			self.listenOn(self.config["virtualHosts"][i], self.config["virtualHosts"][i]["port"]);
 		} else {
@@ -58,10 +57,11 @@ CGIServer.prototype.start = function() {
 	       		}
 	   		}
    		}
+   		console.log(CgiServer.timestampString() + "Loaded virtual host: " + self.config["virtualHosts"][i]["domain"] + ":" + self.config["virtualHosts"][i]["port"]);
    	}
 }
 
-CGIServer.prototype.listenOn = function(domain, port) {
+CgiServer.prototype.listenOn = function(domain, port) {
 	var self = this;
 	/* Default Arguments */
 
@@ -75,7 +75,7 @@ CGIServer.prototype.listenOn = function(domain, port) {
 
 			var filename = path.join(docroot, uri);
 
-			console.log(filename);
+			console.log(CgiServer.timestampString() + request.method.toUpperCase() + " " + filename + " from " + request.connection.remoteAddress);
 
 			if (!fs.existsSync(filename)) {
 				/* File doesn't exist */
@@ -113,34 +113,31 @@ CGIServer.prototype.listenOn = function(domain, port) {
     self.servers.push(server)
 };
 
-CGIServer.prototype.send = function(status, args, data, response) {
+CgiServer.prototype.send = function(status, args, data, response) {
 	response.writeHead(status, args);
 	response.write(data);
 	response.end();
 };
 
-CGIServer.prototype.serverStatic = function(filename, request, config, callback) {
+CgiServer.prototype.serverStatic = function(filename, request, config, callback) {
 	fs.readFile(filename, function (err, data) {
 		if (err) {
 			console.log(err)
 		} else {
+
+			console.log(CgiServer.timestampString() + "static:0.1 - " + path.normalize(filename))
+
 			var extName = path.extname(filename);
-			if (extName in config["staticExtensions"]) {
-				callback(false, 200, {
-					"Content-Type": config["staticExtensions"][extName],
-					"Content-Length": data.length
-				}, data);
-			} else {
-				callback(false, 200, {
-					"Content-Type": "application/octet-stream",
-					"Content-Length": data.length
-				}, data);
-			}
+			var mime = config["staticExtensions"][extName]
+			callback(false, 200, {
+				"Content-Type": typeof mime !== "undefined" ? mime : "application/octet-stream",
+				"Content-Length": data.length
+			}, data);
 		}
 	});
 };
 
-CGIServer.prototype.findHandler = function(handlerName, paths, callback) {
+CgiServer.prototype.findHandler = function(handlerName, paths, callback) {
 	for(var i in paths) {
 		var path = paths[i] + "/" + handlerName + ".js";
 
@@ -152,7 +149,7 @@ CGIServer.prototype.findHandler = function(handlerName, paths, callback) {
 	}
 }
 
-CGIServer.prototype.executeHandler = function(filename,  self, request, response) {
+CgiServer.prototype.executeHandler = function(filename,  self, request, response) {
 	var extName = path.extname(filename);
 	
 	if (!extName) {
@@ -184,7 +181,7 @@ CGIServer.prototype.executeHandler = function(filename,  self, request, response
 	}
 };
 
-CGIServer.prototype.getDomain = function(request) {
+CgiServer.prototype.getDomain = function(request) {
 	var self = this;
 
 	var host = request["headers"]["host"].split(":");
@@ -222,7 +219,7 @@ CGIServer.prototype.getDomain = function(request) {
 }
 
 
-CGIServer.prototype.httpError = function(error, self, request, response) {
+CgiServer.prototype.httpError = function(error, self, request, response) {
 	var fileName = "__" + error + "__";
 
 	if (fileName in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
@@ -238,13 +235,13 @@ CGIServer.prototype.httpError = function(error, self, request, response) {
 	}
 };
 
-CGIServer.prototype.httpErrorLastResort = function(error, self, request, response) {
+CgiServer.prototype.httpErrorLastResort = function(error, self, request, response) {
 	self.send(error, {
 		"Content-Type": "text/html"
 	}, "<h1>Error: " + error + "</h1>", response);
 };
 
-CGIServer.prototype.directory = function(filename, self, request, response) {
+CgiServer.prototype.directory = function(filename, self, request, response) {
 	if ("__directory__" in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
 		var file = self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]["__directory__"];
 		if (file.length > 0) {
@@ -261,7 +258,7 @@ CGIServer.prototype.directory = function(filename, self, request, response) {
 	}
 };
 
-CGIServer.prototype.directoryListing = function(filename, self, request, response) {
+CgiServer.prototype.directoryListing = function(filename, self, request, response) {
 	var relativeFileName = filename.replace(path.normalize(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"]), "");
 
 	if (self.config["directoryListing"] === true) {
@@ -314,7 +311,7 @@ CGIServer.prototype.directoryListing = function(filename, self, request, respons
 	}
 };
 
-CGIServer.parseCGIOutput = function(stdout, ext, config, callback) {
+CgiServer.parseCGIOutput = function(stdout, ext, config, callback) {
 	var args = {};
 
 	try {
@@ -335,9 +332,8 @@ CGIServer.parseCGIOutput = function(stdout, ext, config, callback) {
 			var split = string.split(":");
 			split[1] = split[1].trim();
 
-			console.log(start)
 			if (split.length == 2) {
-				if (split[0] == "status") {
+				if (split[0].toLowerCase() == "status") {
 					var newStatus = parseInt(split[1]);
 
 					if (newStatus != NaN) {
@@ -364,7 +360,12 @@ CGIServer.parseCGIOutput = function(stdout, ext, config, callback) {
 	}
 }
 
-CGIServer.constructEnvArray = function(filename, request, config) {
+CgiServer.timestampString = function() {
+	var date = "[" + (new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')) + "]: ";
+	return date;
+}
+
+CgiServer.constructEnvArray = function(filename, request, config) {
 	/* CGI 1.1 */
 
 	var env = {
@@ -404,4 +405,4 @@ CGIServer.constructEnvArray = function(filename, request, config) {
 	return env;
 }
 
-global.CGIServer = CGIServer;
+global.CgiServer = CgiServer;

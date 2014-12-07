@@ -3,10 +3,16 @@ var path = require('path')
 
 function sbclHandler() {
 
+	this.handlerName = "sbcl";
+
+	this.handlerVersion = 0.1;
+
 	this.handle = function(filename, request, config, callback) {
-		console.log("sbcl --script ./" + filename)
+		
+		console.log(CgiServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "sbcl --script ./" + path.normalize(filename));
+
 		child = cp.exec("sbcl --script ./" + filename, {
-			"env": CGIServer.constructEnvArray(filename, request, config),
+			"env": CgiServer.constructEnvArray(filename, request, config),
 			"timeout": config["timeout"]
 		}, function(err, stdout, stderr) {
 			if (err) {
