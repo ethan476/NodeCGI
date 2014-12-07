@@ -333,6 +333,8 @@ CgiServer.prototype.directoryListing = function(filename, self, request, respons
 	}
 };
 
+
+/* Rewrite at some point */
 CgiServer.parseCGIOutput = function(stdout, ext, config, callback) {
 	var args = {};
 
@@ -340,45 +342,51 @@ CgiServer.parseCGIOutput = function(stdout, ext, config, callback) {
 		var status = 200;
 
 		var start = 0;
-		while(true) {
+		var running = true;
+
+		while(running) {
 			var i = stdout.indexOf("\r\n", start);
 			var string = stdout.substring(start, i);
 
-			if (start == i || i == -1 || string.length == 0) {
-				stdout = stdout.substr(start).replace(/^[\r\n]+|\.|[\r\n]+$/g, "");
-				break;
-			}
+			if (i == -1 || i == stdout.length || string.length == 0 ) {
+				stdout = stdout.substring(start).replace(/^[\r\n]+|\.|[\r\n]+$/g, "");
+				running = false;
+			} else {
 
-			start = i;
+				start = i + 2;
 
-			var split = string.split(":");
-			split[1] = split[1].trim();
+				var split = string.split(":");
+				split[1] = split[1].trim();
 
-			if (split.length == 2) {
-				if (split[0].toLowerCase() == "status") {
-					var newStatus = parseInt(split[1]);
+				if (split.length == 2) {
+					if (split[0].toLowerCase() == "status") {
+						var newStatus = parseInt(split[1]);
 
-					if (newStatus != NaN) {
-						status = newStatus;
+						if (newStatus != NaN) {
+							status = newStatus;
+						}
+					} else {
+						args[split[0].toLowerCase()] = split[1];
 					}
-				} else {
-					args[split[0]] = split[1];
 				}
 			}
 		}
-	} catch(e) {
+	} catch(err) {
+		console.log(err)
 		var status = 200;
-		args["Content-Type"] = config["extensions"][ext]["default-content-type"];
-		args["Content-Length"] = stdout.length;
+		args["content-type"] = config["extensions"][ext]["default-content-type"];
+		args["content-length"] = stdout.length;
 	} finally {
-		if ("Content-Type" in args == false) {
-			args["Content-Type"] = config["extensions"][ext]["default-content-type"];
+		if (typeof status == "undefined") {
+			status = 200;
 		}
-		if ("Content-Length" in args == false) {
-			args["Content-Length"] = stdout.length;
+		if ("content-type" in args == false) {
+			args["content-type"] = config["extensions"][ext]["default-content-type"];
 		}
-
-		callback(false, status, args, stdout);
+		if ("content-length" in args == false) {
+			args["content-length"] = stdout.length;
+		}
+		return callback(false, status, args, stdout);
 	}
 }
 
@@ -409,6 +417,7 @@ CgiServer.constructEnvArray = function(filename, request, config) {
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
 		"SCRIPT_NAME": 		"", /* TODO: Fix */
+		"REDIRECT_STATUS": "200",
 		"SERVER_PORT": 		config["port"],
 	};
 

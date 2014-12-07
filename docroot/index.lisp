@@ -1,4 +1,10 @@
-(format t "Content-Type: text/html~C~C" #\return #\linefeed)
+;Headers Start
+
+(format t "Content-Type: text/plain~C~C" #\return #\linefeed)
+
+;(format t "~C~C" #\return #\linefeed)
+
+;Headers End
 
 (format t "<form method='post'>Name: <input type='text' name='name'><input type='submit'></form>")
 

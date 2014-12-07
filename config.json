@@ -20,6 +20,11 @@
 		".lisp": {
 			"handler": "clisp",
 			"default-content-type": "text/html"
+		},
+		".php": {
+			"handler": "php",
+			"iniPath": "/etc/",
+			"default-content-type": "text/html"
 		}
 	},
 

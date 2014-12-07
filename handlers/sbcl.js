@@ -20,14 +20,10 @@ function sbclHandler() {
 				return "";
 			}
 
-			return callback(false, 200, {
-				"Content-Type": config["extensions"][".lisp"]["default-content-type"],
-				"Content-Length": stdout.length
-			}, stdout);
+			return CgiServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
 		});
-		request.pipe(child.stdin)
-		child.stdin.close();
+		request.pipe(child.stdin);
 	}
 }
 
-module.exports = new sbclHandler()
+module.exports = new sbclHandler();
