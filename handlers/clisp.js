@@ -9,10 +9,10 @@ function clispHandler() {
 
 	this.handle = function(filename, request, config, callback) {
 		
-		console.log(CGIServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
+		console.log(CgiServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
 
 		child = cp.exec("clisp ./" + filename, {
-			"env": CGIServer.constructEnvArray(filename, request, config),
+			"env": CgiServer.constructEnvArray(filename, request, config),
 			"timeout": config["timeout"]
 		}, function(err, stdout, stderr) {
 			if (err) {
@@ -20,7 +20,7 @@ function clispHandler() {
 				return "";
 			}
 
-			return CGIServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
+			return CgiServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
 
 /*
 				callback(false, 200, {
