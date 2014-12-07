@@ -73,6 +73,7 @@
 		".hdf"    : "application/x-hdf",
 		".htm"    : "text/html",
 		".html"   : "text/html",
+		".ico"	  : "image/x-icon",
 		".jpe"    : "image/jpeg",
 		".jpeg"   : "image/jpeg",
 		".jpg"    : "image/jpeg",
