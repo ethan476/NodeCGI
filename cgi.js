@@ -1,7 +1,9 @@
 var fs = require("fs");
 var http = require("http");
+var https = require('https');
 var path = require("path");
 var url = require("url");
+const crypto = require('crypto')
 var querystring = require('querystring');
 
 function CgiServer(configurationFile, silent) {
@@ -18,6 +20,8 @@ function CgiServer(configurationFile, silent) {
 	self.sockets = {};
 
 	self.nextSocketId = 0;
+
+	CgiServer.instance = self;
 
 	/* Load Handlers */
 	self.handlers = {};
@@ -85,56 +89,94 @@ CgiServer.prototype.listenOn = function(domain, port) {
 	var self = this;
 	/* Default Arguments */
 
-    server = http.createServer(function(request, response) {
-		var uri = url.parse(request.url).pathname;
+	this.loadOptions(domain, function(options, serverType) {
 
-		var domain = self.getDomain(request);
+		if (serverType == "http") {
+			server = http.createServer(self.handler).listen(port);
+		} else {
+	    	server = https.createServer(self.handler).listen(port);
+		}
 
-		if (domain !== false) {
-			var docroot = self.config["virtualHosts"][domain]["documentRoot"];
+		self.servers.push(server);
+	    self.usedPorts.push(port);
 
-			var filename = path.join(docroot, uri);
+	    server.on('connection', function (socket) {
+	        var socketId = self.nextSocketId++;
+	        self.sockets[socketId] = socket;
 
-			CgiServer.log(request.method.toUpperCase() + " " + filename + " from " + request.connection.remoteAddress);
+	        socket.on('close', function () {
+	    		delete self.sockets[socketId];
+	  		});
+	    });
+	});
+};
 
-			if (!fs.existsSync(filename)) {
-				/* File doesn't exist */
-				return self.httpError(404, self, request, response);
-			} else if (fs.lstatSync(filename).isDirectory()) {
-				/* Load index file or pass to __directory__ handler */
-				for(var i in self.config["indexFiles"]) {
-					indexFilename = filename + "/" + self.config["indexFiles"][i];
-					if (fs.existsSync(indexFilename)) {
-						if (fs.lstatSync(indexFilename).isFile()) {
-							return self.executeHandler(indexFilename, self, request, response);
-						}
+CgiServer.prototype.handler = function(request, response) {
+	var self = CgiServer.instance;
+
+	var uri = url.parse(request.url).pathname;
+
+	var domain = self.getDomain(request);
+
+	if (domain !== false) {
+		var docroot = self.config["virtualHosts"][domain]["documentRoot"];
+
+		var filename = path.join(docroot, uri);
+
+		CgiServer.log(request.method.toUpperCase() + " " + filename + " from " + request.connection.remoteAddress);
+
+		if (!fs.existsSync(filename)) {
+			/* File doesn't exist */
+			return self.httpError(404, request, response);
+		} else if (fs.lstatSync(filename).isDirectory()) {
+			/* Load index file or pass to __directory__ handler */
+			for(var i in self.config["indexFiles"]) {
+				indexFilename = filename + "/" + self.config["indexFiles"][i];
+				if (fs.existsSync(indexFilename)) {
+					if (fs.lstatSync(indexFilename).isFile()) {
+						return self.executeHandler(indexFilename, request, response);
 					}
 				}
-
-				return self.directory(filename, self, request, response);
-			} else {
-				return self.executeHandler(filename, self, request, response);
 			}
+
+			return self.directory(filename, request, response);
 		} else {
-			/* Whoops, that domain doesn't exist according to the vhosts record, pretend were not home. */
-			response.socket.destroy();
+			return self.executeHandler(filename, request, response);
 		}
-	}).listen(port);
+	} else {
+		/* Whoops, that domain doesn't exist according to the vhosts record, pretend were not home. */
+		response.socket.destroy();
+	}
+}
 
-	self.servers.push(server);
-    self.usedPorts.push(port);
+CgiServer.prototype.loadOptions = function(domain, callback) {
+	var options = {};
 
-    server.on('connection', function (socket) {
-        var socketId = self.nextSocketId++;
-        self.sockets[socketId] = socket;
+	var serverType = "http";
 
-        socket.on('close', function () {
-    		delete self.sockets[socketId];
-  		});
-    });
+	if ("ssl" in domain) {
+		if (domain["ssl"]["useSSL"] == true) {
 
+			var key = domain["ssl"]["privateKey"];
+			if (key.length != 0 && fs.existsSync(key)) {
+				var cert = domain["ssl"]["certificate"];
+				if (cert.length != 0 && fs.existsSync(cert)) {
+					options["key"] = fs.readFileSync(key);
+					options["cert"] = fs.readFileSync(cert);
 
-};
+					serverType = "https";
+				} else {
+					CgiServer.log("Failed to load cert: " + cert);
+				}
+			} else {
+				CgiServer.log("Failed to load key: " + key);
+			}
+
+		}
+	}
+
+	callback(options, serverType);
+}
 
 CgiServer.prototype.send = function(status, args, data, response) {
 	response.writeHead(status, args);
@@ -172,7 +214,9 @@ CgiServer.prototype.findHandler = function(handlerName, paths, callback) {
 	}
 }
 
-CgiServer.prototype.executeHandler = function(filename,  self, request, response) {
+CgiServer.prototype.executeHandler = function(filename, request, response) {
+	var self = CgiServer.instance;
+
 	var extName = path.extname(filename);
 	
 	if (!extName) {
@@ -241,46 +285,50 @@ CgiServer.prototype.getDomain = function(request) {
 	}
 }
 
-CgiServer.prototype.httpError = function(error, self, request, response) {
+CgiServer.prototype.httpError = function(error, request, response) {
+	var self = CgiServer.instance;
+
 	var fileName = "__" + error + "__";
 
 	if (fileName in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
 		var file = path.join(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"], self.config["virtualHosts"][self.getDomain(request)]["specialFiles"][fileName]);
 
 		if (fs.lstatSync(file).isFile() === false) {
-			return self.httpErrorLastResort(error, self, request, response);
+			return self.httpErrorLastResort(error, request, response);
 		} else {
-			return self.executeHandler(file, self, request, response);
+			return self.executeHandler(file, request, response);
 		}
 	} else {
-		return self.httpErrorLastResort(error, self, request, response);
+		return self.httpErrorLastResort(error, request, response);
 	}
 };
 
-CgiServer.prototype.httpErrorLastResort = function(error, self, request, response) {
+CgiServer.prototype.httpErrorLastResort = function(error, request, response) {
 	self.send(error, {
 		"Content-Type": "text/html"
 	}, "<h1>Error: " + error + "</h1>", response);
 };
 
-CgiServer.prototype.directory = function(filename, self, request, response) {
+CgiServer.prototype.directory = function(filename, request, response) {
+	var self = CgiServer.instance;
+
 	if ("__directory__" in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
 		var file = self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]["__directory__"];
 		if (file.length > 0) {
 				if (fs.lstatSync(file).isFile()) {
-					return self.executeHandler(filename, self, request, response);
+					return self.executeHandler(filename, request, response);
 				} else {
-					self.directoryListing(filename, self, request, response);
+					self.directoryListing(filename, request, response);
 				}
 		} else {
-			self.directoryListing(filename, self, request, response);
+			self.directoryListing(filename, request, response);
 		}
 	} else {
-		self.directoryListing(filename, self, request, response);
+		self.directoryListing(filename, request, response);
 	}
 };
 
-CgiServer.prototype.directoryListing = function(filename, self, request, response) {
+CgiServer.prototype.directoryListing = function(filename, request, response) {
 	var relativeFileName = filename.replace(path.normalize(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"]), "");
 
 	if (self.config["directoryListing"] === true) {
@@ -329,7 +377,7 @@ CgiServer.prototype.directoryListing = function(filename, self, request, respons
 		}, html, response);
 
 	} else {
-		return self.httpError(404, self, request, response);
+		return self.httpError(404, request, response);
 	}
 };
 

@@ -9,6 +9,11 @@
 				"__500__": "",
 				"__directory__": ""
 			},
+			"ssl": {
+				"useSSL": false,
+				"privateKey": "",
+				"certificate": ""
+			},
 			"port": 8081
 		}
 
