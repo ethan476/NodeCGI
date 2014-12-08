@@ -108,6 +108,7 @@ CgiServer.prototype.listenOn = function(domain, port) {
 	    		delete self.sockets[socketId];
 	  		});
 	    });
+
 	});
 };
 
@@ -469,7 +470,8 @@ CgiServer.constructEnvArray = function(filename, request, config) {
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
 		"SCRIPT_NAME": 		"", /* TODO: Fix */
-		"REDIRECT_STATUS": "200",
+		"REDIRECT_STATUS": 	"200",
+		"REQUEST_TIME": 	new Date().getTime() / 1000,
 		"SERVER_PORT": 		config["port"],
 	};
 

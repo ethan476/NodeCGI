@@ -26,6 +26,10 @@
 			"handler": "clisp",
 			"default-content-type": "text/html"
 		},
+		".cgi": {
+			"handler": "cgi",
+			"default-content-type": "text/html"
+		},
 		".php": {
 			"handler": "php",
 			"iniPath": "/etc/",
