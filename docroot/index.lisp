@@ -1,11 +1,20 @@
 ;Headers Start
 
-(format t "Content-Type: text/plain~C~C" #\return #\linefeed)
+(format t "Content-Type: text/html~C~C" #\return #\linefeed)
 
-;(format t "~C~C" #\return #\linefeed)
+(format t "~C~C" #\return #\linefeed)
 
 ;Headers End
 
-(format t "<form method='post'>Name: <input type='text' name='name'><input type='submit'></form>")
+(format t 
+"<html>
+	<head>
 
-(format t "~@[~a~]" (read-line t nil ""))
+	</head>
+
+	<body>
+		<form method='post'>Name: <input type='text' name='name'><input type='submit'></form>
+		~@[~a~]
+	</body>
+</html>"
+(read-line t nil ""))

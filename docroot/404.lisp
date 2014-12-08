@@ -1,1 +1,11 @@
-(format t "A 404 made w/ lisp.")
+(format t 
+"<html>
+	<head>
+
+	</head>
+
+	<body>
+		<h2>Error 404 - Page not found</h2>
+	</body>
+</html>"
+)
