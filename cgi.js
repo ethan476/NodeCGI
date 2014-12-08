@@ -4,7 +4,7 @@ var path = require("path");
 var url = require("url");
 var querystring = require('querystring');
 
-function CgiServer(configurationFile, port) {
+function CgiServer(configurationFile, silent) {
 	var self = this;
 
 	self.config = require(configurationFile);
@@ -33,7 +33,7 @@ function CgiServer(configurationFile, port) {
 					console.log(err)
 				} else {
 					self.handlers[ext] = handlerObject;
-					console.log(CgiServer.timestampString() + "Loaded handler for *" + ext);
+					CgiServer.log("Loaded handler for *" + ext);
 				}
 			});
 		}
@@ -41,7 +41,7 @@ function CgiServer(configurationFile, port) {
 
 	if (self.handlers.length == 0) {
 		/* No handlers loaded */
-		console.log(CgiServer.timestampString() + "Warning: no handlers loaded, only static files will be served.");
+		CgiServer.log("Warning: no handlers loaded, only static files will be served.");
 	}
 }	
 
@@ -61,22 +61,22 @@ CgiServer.prototype.start = function() {
 	       		}
 	   		}
    		}
-   		console.log(CgiServer.timestampString() + "Loaded virtual host: " + self.config["virtualHosts"][i]["domain"] + ":" + self.config["virtualHosts"][i]["port"]);
+   		CgiServer.log("Loaded virtual host: " + self.config["virtualHosts"][i]["domain"] + ":" + self.config["virtualHosts"][i]["port"]);
    	}
 };
 
 CgiServer.prototype.stop = function() {
 	var self = this;
 
-	console.log(CgiServer.timestampString() + "Stopping server");
+	CgiServer.log("Stopping server");
 
 	for(var socketId in self.sockets) {
-		console.log(CgiServer.timestampString() + "Closed connection to: " + self.sockets[socketId].remoteAddress + ":" + self.sockets[socketId].remotePort);
+		CgiServer.log("Closed connection to: " + self.sockets[socketId].remoteAddress + ":" + self.sockets[socketId].remotePort);
 		self.sockets[socketId].destroy();
 	}
 
 	for(var server in self.servers) {
-		console.log(CgiServer.timestampString() + "Closed server on " + self.servers[server].address().address + ":" + self.servers[server].address().port);
+		CgiServer.log("Closed server on " + self.servers[server].address().address + ":" + self.servers[server].address().port);
 		self.servers[server].close();
 	}
 };
@@ -95,7 +95,7 @@ CgiServer.prototype.listenOn = function(domain, port) {
 
 			var filename = path.join(docroot, uri);
 
-			console.log(CgiServer.timestampString() + request.method.toUpperCase() + " " + filename + " from " + request.connection.remoteAddress);
+			CgiServer.log(request.method.toUpperCase() + " " + filename + " from " + request.connection.remoteAddress);
 
 			if (!fs.existsSync(filename)) {
 				/* File doesn't exist */
@@ -148,7 +148,7 @@ CgiServer.prototype.serverStatic = function(filename, request, config, callback)
 			console.log(err)
 		} else {
 
-			console.log(CgiServer.timestampString() + "static:0.1 - " + path.normalize(filename))
+			CgiServer.log("static:0.1 - " + path.normalize(filename))
 
 			var extName = path.extname(filename);
 			var mime = config["staticExtensions"][extName]
@@ -393,6 +393,10 @@ CgiServer.parseCGIOutput = function(stdout, ext, config, callback) {
 CgiServer.timestampString = function() {
 	var date = "[" + (new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')) + "]: ";
 	return date;
+}
+
+CgiServer.log = function(text) {
+	console.log(CgiServer.timestampString() + text);
 }
 
 CgiServer.constructEnvArray = function(filename, request, config) {

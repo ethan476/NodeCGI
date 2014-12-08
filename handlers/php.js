@@ -9,7 +9,7 @@ function phpHandler() {
 
 	this.handle = function(filename, request, config, callback) {
 		
-		console.log(CgiServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - php-cgi -q -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename));
+		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - php-cgi -q -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename));
 
 		child = cp.exec("php-cgi -q -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename), {
 			"env": CgiServer.constructEnvArray(filename, request, config),

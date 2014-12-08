@@ -9,7 +9,7 @@ function sbclHandler() {
 
 	this.handle = function(filename, request, config, callback) {
 		
-		console.log(CgiServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "sbcl --script ./" + path.normalize(filename));
+		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - " + "sbcl --script ./" + path.normalize(filename));
 
 		child = cp.exec("sbcl --script ./" + filename, {
 			"env": CgiServer.constructEnvArray(filename, request, config),

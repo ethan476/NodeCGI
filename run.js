@@ -2,6 +2,6 @@
 
 require("./cgi.js");
 
-var server = new CgiServer("./config.json");
+var server = new CgiServer("./config.json", false);
 
 server.start();

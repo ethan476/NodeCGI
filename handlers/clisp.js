@@ -9,7 +9,7 @@ function clispHandler() {
 
 	this.handle = function(filename, request, config, callback) {
 		
-		console.log(CgiServer.timestampString() + this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
+		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
 
 		child = cp.exec("clisp ./" + filename, {
 			"env": CgiServer.constructEnvArray(filename, request, config),
