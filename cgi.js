@@ -94,7 +94,7 @@ CgiServer.prototype.listenOn = function(domain, port) {
 		if (serverType == "http") {
 			server = http.createServer(self.handler).listen(port);
 		} else {
-	    	server = https.createServer(self.handler).listen(port);
+	    	server = https.createServer(options, self.handler).listen(port);
 		}
 
 		self.servers.push(server);

@@ -10,9 +10,9 @@
 				"__directory__": ""
 			},
 			"ssl": {
-				"useSSL": false,
-				"privateKey": "",
-				"certificate": ""
+				"useSSL": true,
+				"privateKey": "./ssl/snakeoil.key",
+				"certificate": "./ssl/snakeoil.crt"
 			},
 			"port": 8081
 		}
