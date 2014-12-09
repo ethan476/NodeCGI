@@ -330,21 +330,32 @@ CgiServer.prototype.directory = function(filename, request, response) {
 };
 
 CgiServer.prototype.directoryListing = function(filename, request, response) {
+	var self = CgiServer.instance;
+
 	var relativeFileName = filename.replace(path.normalize(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"]), "");
 
 	if (self.config["directoryListing"] === true) {
 		var html = [];
 
 		html.push("<html>");
-		html.push("<title>" + relativeFileName + " Listing</title>");
-		
-		html.push("<h2>");
 
 		var directoryParts = relativeFileName.replace(/^\/|\/$/g, '').split(path.sep);
 
+		html.push("<head>");
+
+		html.push("<title>" + directoryParts[directoryParts.length - 1] + " Directory Listing</title>");
+		
+		html.push("</head>");
+
+		html.push("<body>")
+
+		html.push("<h2>");
+
+		html.push("<a href='/'>/</a>");
+
 		for(var i in directoryParts) {
-			var link = directoryParts.slice(0, i);
-			html.push("<a href='" + link + "'>" + directoryParts[i] + "</a>/");
+			var link = directoryParts.slice(0, i + 1);
+			html.push("<a href='" + link + "'>" + directoryParts[i].trim() + "/</a>");
 		}
 
 		html.push("</h2>");
@@ -358,9 +369,9 @@ CgiServer.prototype.directoryListing = function(filename, request, response) {
 		var files = fs.readdirSync(filename);
 		for(var i in files) {
 			if (fs.lstatSync(filename + "/" + files[i]).isDirectory()) {
-				html.push("<li><a href='" + files[i] + "'>" + files[i] + "/</a></li>");
+				html.push("<li><a href='" + relativeFileName + "/" + files[i] + "'>" + files[i] + "/</a></li>");
 			} else {
-				html.push("<li><a href='" + files[i] + "'>" + files[i] + "</a></li>");
+				html.push("<li><a href='" + relativeFileName + "/" + files[i] + "'>" + files[i] + "</a></li>");
 			}
 		}
 
@@ -368,7 +379,9 @@ CgiServer.prototype.directoryListing = function(filename, request, response) {
 
 		html.push("</h3>");
 
-		html.push("<html>");
+		html.push("</body>")
+
+		html.push("</html>");
 
 		html = html.join("\n");
 
