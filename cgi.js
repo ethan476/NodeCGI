@@ -280,7 +280,9 @@ CgiServer.prototype.getDomain = function(request) {
 					}
 				}
 			} else {
-				return false;
+				if (i + 1 == self.config["virtualHosts"].length) {
+					return false;
+				}
 			}
 		}
 	}
@@ -294,10 +296,14 @@ CgiServer.prototype.httpError = function(error, request, response) {
 	if (fileName in self.config["virtualHosts"][self.getDomain(request)]["specialFiles"]) {
 		var file = path.join(self.config["virtualHosts"][self.getDomain(request)]["documentRoot"], self.config["virtualHosts"][self.getDomain(request)]["specialFiles"][fileName]);
 
-		if (fs.lstatSync(file).isFile() === false) {
-			return self.httpErrorLastResort(error, request, response);
+		if (fs.existsSync(file)) {
+			if (fs.lstatSync(file).isFile()) {
+				return self.executeHandler(file, request, response);
+			} else {
+				return self.httpErrorLastResort(error, request, response);
+			}
 		} else {
-			return self.executeHandler(file, request, response);
+			return self.httpErrorLastResort(error, request, response);
 		}
 	} else {
 		return self.httpErrorLastResort(error, request, response);
@@ -305,6 +311,8 @@ CgiServer.prototype.httpError = function(error, request, response) {
 };
 
 CgiServer.prototype.httpErrorLastResort = function(error, request, response) {
+	var self = CgiServer.instance;
+	
 	self.send(error, {
 		"Content-Type": "text/html"
 	}, "<h1>Error: " + error + "</h1>", response);
@@ -350,13 +358,14 @@ CgiServer.prototype.directoryListing = function(filename, request, response) {
 		html.push("<body>")
 
 		html.push("<h2>");
-
-		html.push("<a href='/'>/</a>");
-
+		
+		var tmp = [];
+		tmp.push("<a href='/'>/</a>");
 		for(var i in directoryParts) {
 			var link = directoryParts.slice(0, i + 1);
-			html.push("<a href='" + link + "'>" + directoryParts[i].trim() + "/</a>");
+			tmp.push("<a href='/" + link + "'>" + directoryParts[i].trim() + "/</a>");
 		}
+		html.push(tmp.join(""));
 
 		html.push("</h2>");
 
@@ -369,15 +378,19 @@ CgiServer.prototype.directoryListing = function(filename, request, response) {
 		var files = fs.readdirSync(filename);
 		for(var i in files) {
 			if (fs.lstatSync(filename + "/" + files[i]).isDirectory()) {
-				html.push("<li><a href='" + relativeFileName + "/" + files[i] + "'>" + files[i] + "/</a></li>");
+				html.push("<li><a href='" + path.normalize(relativeFileName + "/" + files[i]) + "'>" + files[i] + "/</a></li>");
 			} else {
-				html.push("<li><a href='" + relativeFileName + "/" + files[i] + "'>" + files[i] + "</a></li>");
+				html.push("<li><a href='" + path.normalize(relativeFileName + "/" + files[i]) + "'>" + files[i] + "</a></li>");
 			}
 		}
 
 		html.push("</ul>");
 
 		html.push("</h3>");
+
+		html.push("<hr>");
+
+		html.push(self.config["cgi"]["SERVER_ADMIN"] + " - " + self.config["cgi"]["SERVER_NAME"]);
 
 		html.push("</body>")
 
@@ -465,24 +478,21 @@ CgiServer.constructEnvArray = function(filename, request, config) {
 	/* CGI 1.1 */
 
 	var env = {
-		"CONTENT_LENGTH": 	request.headers["content-length"],
-		"CONTENT_TYPE": 	request.headers["content-type"],
 		"DOCUMENT_ROOT": 	config["documentRoot"],
 		"HTTP_HOST": 		request.headers["host"],
-		"HTTP_REFERER": 	request.headers["referer"],
-		"HTTP_COOKIE": 		"", /* TODO: Fix */
-		"HTTP_USER_AGENT": 	request.headers["user-agent"],
-		"HTTPS": 			"false", /* TODO: Fix */
+		"HTTP_REFERER": 	typeof request.headers["referer"] !== "undefined" ? request.headers["referer"] : "",
+		"HTTP_COOKIE": 		typeof request.headers["cookie"] !== "undefined" ? request.headers["cookie"] : "",
+		"HTTP_USER_AGENT": 	typeof request.headers["user-agent"] !== "undefined" ? request.headers["user-agent"] : "",
+		"HTTPS": 			typeof request.connection.encrypted !== "undefined" ? "on" : "",
 		"PATH": 			process.cwd(),
 		"QUERY_STRING": 	querystring.stringify(url.parse(request.url, true).query),
 		"REMOTE_ADDR": 		request.connection.remoteAddress,
 		"REMOTE_HOST": 		request.headers['x-forwarded-for'] || request.connection.remoteAddress,
-		"REMOTE_PORT": 		request.headers['x-forwarded-port'],
-		"REMOTE_USER": 		"", /* TODO: Fix */
+		"REMOTE_PORT": 		request.headers['x-forwarded-port'] || request.connection.remotePort,
 		"REQUEST_METHOD": 	request.method,
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
-		"SCRIPT_NAME": 		"", /* TODO: Fix */
+		"SCRIPT_NAME": 		url.parse(request.url).pathname,
 		"REDIRECT_STATUS": 	"200",
 		"REQUEST_TIME": 	new Date().getTime() / 1000,
 		"SERVER_PORT": 		config["port"],
