@@ -7,12 +7,12 @@ function clispHandler() {
 
 	this.handlerVersion = 0.1;
 
-	this.handle = function(filename, request, config, callback) {
+	this.handle = function(filename, request, response, config, callback) {
 		
 		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
 
 		child = cp.exec("clisp ./" + filename, {
-			"env": CgiServer.constructEnvArray(filename, request, config),
+			"env": CgiServer.constructEnvArray(filename, request, response, config),
 			"timeout": config["timeout"]
 		}, function(err, stdout, stderr) {
 			if (err) {

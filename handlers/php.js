@@ -7,12 +7,13 @@ function phpHandler() {
 
 	this.handlerVersion = 0.1;
 
-	this.handle = function(filename, request, config, callback) {
+	this.handle = function(filename, request, response, config, callback) {
 		
-		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - php-cgi -q -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename));
+		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - php-cgi -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename));
 
-		child = cp.exec("php-cgi -q -c " + config["extensions"][".php"]["iniPath"] + " " + path.normalize(filename), {
-			"env": CgiServer.constructEnvArray(filename, request, config),
+		//-
+		child = cp.exec("php-cgi -c " + config["extensions"][".php"]["iniPath"], {
+			"env": CgiServer.constructEnvArray(filename, request, response, config),
 			"timeout": config["timeout"]
 		}, function(err, stdout, stderr) {
 			if (err) {
@@ -22,6 +23,7 @@ function phpHandler() {
 
 			return CgiServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
 		});
+
 		request.pipe(child.stdin);
 	}
 }

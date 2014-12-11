@@ -240,7 +240,7 @@ CgiServer.prototype.executeHandler = function(filename, request, response) {
 
 		var handler = self.handlers[extName];
 
-		handler.handle(filename, request, self.config, function(err, status, args, data) {
+		handler.handle(filename, request, response, self.config, function(err, status, args, data) {
 			if (err) {
 				/* Hmm, what now? */
 			}
@@ -424,7 +424,7 @@ CgiServer.parseCGIOutput = function(stdout, ext, config, callback) {
 			var string = stdout.substring(start, i);
 
 			if (i == -1 || i == stdout.length || string.length == 0 ) {
-				stdout = stdout.substring(start).replace(/^[\r\n]+|\.|[\r\n]+$/g, "");
+				stdout = stdout.substring(start).replace(/^\s+|\s+$/g, "");
 				running = false;
 			} else {
 
@@ -474,11 +474,13 @@ CgiServer.log = function(text) {
 	console.log(CgiServer.timestampString() + text);
 }
 
-CgiServer.constructEnvArray = function(filename, request, config) {
+CgiServer.constructEnvArray = function(filename, request, response, config) {
+	var self = CgiServer.instance;
+
 	/* CGI 1.1 */
 
 	var env = {
-		"DOCUMENT_ROOT": 	config["documentRoot"],
+		"DOCUMENT_ROOT": 	self.config["virtualHosts"][self.getDomain(request)]["documentRoot"],
 		"HTTP_HOST": 		request.headers["host"],
 		"HTTP_REFERER": 	typeof request.headers["referer"] !== "undefined" ? request.headers["referer"] : "",
 		"HTTP_COOKIE": 		typeof request.headers["cookie"] !== "undefined" ? request.headers["cookie"] : "",
@@ -493,22 +495,31 @@ CgiServer.constructEnvArray = function(filename, request, config) {
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
 		"SCRIPT_NAME": 		url.parse(request.url).pathname,
-		"REDIRECT_STATUS": 	"200",
+		"REDIRECT_STATUS": 	"1",
 		"REQUEST_TIME": 	new Date().getTime() / 1000,
-		"SERVER_PORT": 		config["port"],
+		"SERVER_PORT": 		self.config["virtualHosts"][self.getDomain(request)]["port"],
+		"CONTENT_TYPE": 	request.headers["Content-type"] || "",
+		"CONTENT_LENGTH":  	request.body.length
 	};
 
-	for (property in config["cgi"]) {
-		env[property] = config["cgi"][property];
+	for (var header in request.headers) {
+      var name = 'HTTP_' + header.toUpperCase().replace(/-/g, '_');
+            env[name] = request.headers[header];
+    }
+
+	for (property in self.config["cgi"]) {
+		env[property] = self.config["cgi"][property];
 	}
 
-	for (property in config["env"]) {
-		env[property] = config["env"][property];
+	for (property in self.config["env"]) {
+		env[property] = self.config["env"][property];
 	}
 
 	for(property in process.env) {
 		env[property] = process.env[property];
 	}
+
+	console.log(env);
 
 	return env;
 }
