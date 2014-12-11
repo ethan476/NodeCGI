@@ -115,6 +115,8 @@ CgiServer.prototype.listenOn = function(domain, port) {
 CgiServer.prototype.handler = function(request, response) {
 	var self = CgiServer.instance;
 
+
+
 	var uri = url.parse(request.url).pathname;
 
 	var domain = self.getDomain(request);
@@ -146,7 +148,7 @@ CgiServer.prototype.handler = function(request, response) {
 		}
 	} else {
 		/* Whoops, that domain doesn't exist according to the vhosts record, pretend were not home. */
-		response.socket.destroy();
+		request.connection.destroy();
 	}
 }
 
@@ -495,12 +497,14 @@ CgiServer.constructEnvArray = function(filename, request, response, config) {
 		"REQUEST_URI": 		url.parse(request.url).pathname,
 		"SCRIPT_FILENAME": 	filename,
 		"SCRIPT_NAME": 		url.parse(request.url).pathname,
-		"REDIRECT_STATUS": 	"1",
+		"REDIRECT_STATUS": 	"200",
 		"REQUEST_TIME": 	new Date().getTime() / 1000,
 		"SERVER_PORT": 		self.config["virtualHosts"][self.getDomain(request)]["port"],
-		"CONTENT_TYPE": 	request.headers["Content-type"] || "",
-		"CONTENT_LENGTH":  	request.body.length
+		"CONTENT_TYPE": 	request.headers['content-type'] || "",
+		"CONTENT_LENGTH":  	request.headers['content-length'] || "",
 	};
+
+	console.log(env);
 
 	for (var header in request.headers) {
       var name = 'HTTP_' + header.toUpperCase().replace(/-/g, '_');
@@ -518,8 +522,6 @@ CgiServer.constructEnvArray = function(filename, request, response, config) {
 	for(property in process.env) {
 		env[property] = process.env[property];
 	}
-
-	console.log(env);
 
 	return env;
 }

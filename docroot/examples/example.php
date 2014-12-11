@@ -1,10 +1,6 @@
 <?php
 	session_start();
 
-	print_r(file_get_contents("php://input"));
-
-	print_r($_POST);
-
 	if (!empty($_POST)) {
 		$_SESSION["name"] = $_POST["name"];
 	}
@@ -24,7 +20,7 @@
 			} else {
 		?>
 		<form method="post">
-			Name: <input type="text" name="name" enctype="multipart/form-data">
+			Name: <input type="text" name="name">
 			<input type="submit">
 		</form>
 		<?php 
