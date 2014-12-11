@@ -19,7 +19,7 @@
 		<?php 
 			} else {
 		?>
-		<form method="post">
+		<form method="post" enctype='multipart/form-data'>
 			Name: <input type="text" name="name">
 			<input type="submit">
 		</form>
