@@ -484,10 +484,10 @@ CgiServer.constructEnvArray = function(filename, request, response, config) {
 	var env = {
 		"DOCUMENT_ROOT": 	self.config["virtualHosts"][self.getDomain(request)]["documentRoot"],
 		"HTTP_HOST": 		request.headers["host"],
-		"HTTP_REFERER": 	typeof request.headers["referer"] !== "undefined" ? request.headers["referer"] : "",
-		"HTTP_COOKIE": 		typeof request.headers["cookie"] !== "undefined" ? request.headers["cookie"] : "",
-		"HTTP_USER_AGENT": 	typeof request.headers["user-agent"] !== "undefined" ? request.headers["user-agent"] : "",
-		"HTTPS": 			typeof request.connection.encrypted !== "undefined" ? "on" : "",
+		"HTTP_REFERER": 	typeof request.headers["referer"] || "",
+		"HTTP_COOKIE": 		typeof request.headers["cookie"] || "",
+		"HTTP_USER_AGENT": 	typeof request.headers["user-agent"] ||  "",
+		"HTTPS": 			typeof request.connection.encrypted == true ? "on" : "",
 		"PATH": 			process.cwd(),
 		"QUERY_STRING": 	querystring.stringify(url.parse(request.url, true).query),
 		"REMOTE_ADDR": 		request.connection.remoteAddress,
@@ -501,11 +501,9 @@ CgiServer.constructEnvArray = function(filename, request, response, config) {
 		"REQUEST_TIME": 	new Date().getTime() / 1000,
 		"SERVER_PORT": 		self.config["virtualHosts"][self.getDomain(request)]["port"],
 		"CONTENT_TYPE": 	request.headers['content-type'] || "",
-		"CONTENT_LENGTH":  	request.headers['content-length'] || "",
+		"CONTENT_LENGTH":  	request.headers['content-length'] || 0,
 	};
-
-	console.log(env);
-
+	 
 	for (var header in request.headers) {
       var name = 'HTTP_' + header.toUpperCase().replace(/-/g, '_');
             env[name] = request.headers[header];
