@@ -11,18 +11,43 @@ function clispHandler() {
 		
 		CgiServer.log(this.handlerName + ":" + this.handlerVersion + " - " + "clisp ./" + path.normalize(filename));
 
-		child = cp.exec("clisp ./" + filename, {
-			"env": CgiServer.constructEnvArray(filename, request, response, config),
-			"timeout": config["timeout"]
-		}, function(err, stdout, stderr) {
-			if (err) {
-				console.log(err)
-				return "";
-			}
+		var body = "";
+		request.on('data', function (chunk) {
+  	  		body += chunk;
 
-			return CgiServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
-		});
-		request.pipe(child.stdin);
+  	  		if (body.length > 1e6) {
+  	  			/* Todo: send HTTP 413 */
+  	  			request.connection.destroy();
+  	  		}
+  		});
+  
+  		request.on('end', function () {
+    		body = decodeURIComponent(body.replace(/\+/g, ' '));
+    		
+    		if (body[body.length - 1] !== '\n') {
+    			body += '\n';
+    		}
+
+    		child = cp.exec("clisp ./" + filename, {
+				"env": CgiServer.constructEnvArray(filename, request, response, config),
+				"timeout": config["timeout"]
+			}, function(err, stdout, stderr) {
+				if (err) {
+					console.log(err)
+					return "";
+				}
+
+				return CgiServer.parseCGIOutput(stdout, path.extname(filename), config, callback);
+			});
+
+			child.stdin.write(body);
+  		});
+
+
+
+
+		//request.pipe(process.stdin);
+		//request.pipe(child.stdin);
 	}
 }
 
